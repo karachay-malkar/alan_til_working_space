@@ -1,0 +1,236 @@
+name: Build Alan Map 7.3.6 fast persistent 3D
+
+on:
+  push:
+    branches: [7.3.6]
+    paths:
+      - 'tools/build_dem_unified_7_3_6.py'
+      - 'tools/release_7_3_6.py'
+      - '.github/workflows/rebuild-dem-7.3.6.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: alan-map-7-3-6-fast-persistent-3d
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout 7.3.6
+        uses: actions/checkout@v4
+        with:
+          ref: 7.3.6
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+
+      - name: Install DEM, PMTiles and validation tools
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gdal-bin sqlite3 zip
+          python -m pip install --upgrade pip
+          python -m pip install rasterio pillow numpy shapely pmtiles
+          go install github.com/protomaps/go-pmtiles@v1.30.1
+          GO_BIN="$(go env GOPATH)/bin"
+          ln -sf "$GO_BIN/go-pmtiles" "$GO_BIN/pmtiles"
+          echo "$GO_BIN" >> "$GITHUB_PATH"
+          pmtiles version
+
+      - name: Validate 7.3.5 base and prepare unchanged geography
+        run: |
+          set -euxo pipefail
+          python tools/release_7_3_6.py prepare | tee build/release-7.3.6-prepare.json
+          python - <<'PY'
+          import json
+          expected_bounds=[40.51784,42.734095,44.184003,44.534975]
+          expected_ring=[[40.51784,43.41265],[43.731622,42.734095],[44.184003,43.85642],[40.970221,44.534975],[40.51784,43.41265]]
+          bounds=json.load(open('build/rectangular-bounds.json'))['bounds']
+          ring=json.load(open('build/map-frame.geojson'))['features'][0]['geometry']['coordinates'][0]
+          if bounds != expected_bounds or ring != expected_ring:
+              raise SystemExit(f'7.3.6 geography drifted: bounds={bounds} ring={ring}')
+          PY
+          find data -maxdepth 1 -type f -name '*.pmtiles' ! -name 'alan-dem-7.3.5.pmtiles' -print0 | sort -z | xargs -0 sha256sum > build/non-dem-pmtiles-before.sha256
+
+      - name: Download Copernicus DEM GLO-30 numeric source COGs
+        run: |
+          set -euxo pipefail
+          mkdir -p build/copernicus-dem
+          python - <<'PY'
+          import json, math, pathlib, urllib.request
+          west,south,east,north=json.load(open('build/rectangular-bounds.json'))['bounds']
+          out=pathlib.Path('build/copernicus-dem')
+          for lat in range(math.floor(south),math.ceil(north)):
+              for lon in range(math.floor(west),math.ceil(east)):
+                  ns='N' if lat >= 0 else 'S'
+                  ew='E' if lon >= 0 else 'W'
+                  tile=f'Copernicus_DSM_COG_10_{ns}{abs(lat):02d}_00_{ew}{abs(lon):03d}_00_DEM'
+                  url=f'https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com/{tile}/{tile}.tif'
+                  target=out/f'{tile}.tif'
+                  request=urllib.request.Request(url,headers={'User-Agent':'AlanMap/7.3.6'})
+                  print('download',url)
+                  with urllib.request.urlopen(request,timeout=240) as response,target.open('wb') as handle:
+                      while True:
+                          chunk=response.read(1024*1024)
+                          if not chunk:
+                              break
+                          handle.write(chunk)
+          PY
+
+      - name: Warp source through unchanged map frame
+        run: |
+          set -euxo pipefail
+          read WEST SOUTH EAST NORTH < <(python - <<'PY'
+          import json
+          print(*json.load(open('build/rectangular-bounds.json'))['bounds'])
+          PY
+          )
+          gdalbuildvrt build/copernicus-dem.vrt build/copernicus-dem/*.tif
+          gdalwarp -overwrite \
+            -t_srs EPSG:4326 \
+            -te "$WEST" "$SOUTH" "$EAST" "$NORTH" \
+            -cutline build/map-frame.geojson -crop_to_cutline \
+            -dstnodata -10000 -r bilinear \
+            -of GTiff -co TILED=YES -co COMPRESS=DEFLATE -co BIGTIFF=IF_SAFER \
+            build/copernicus-dem.vrt build/copernicus-dem-7.3.6-cutline.tif
+
+      - name: Build sequential Z10 Z9 Z8 Z7 DEM
+        run: |
+          set -euxo pipefail
+          python tools/build_dem_unified_7_3_6.py \
+            --build-from-dem build/copernicus-dem-7.3.6-cutline.tif \
+            --output build/alan-dem-7.3.6-clean.mbtiles \
+            --frame build/map-frame.geojson \
+            | tee build/dem-build-report-7.3.6.json
+          python tools/build_dem_unified_7_3_6.py \
+            build/alan-dem-7.3.6-clean.mbtiles \
+            --frame build/map-frame.geojson --validate \
+            | tee build/dem-validation-7.3.6.json
+          pmtiles convert build/alan-dem-7.3.6-clean.mbtiles build/alan-dem-7.3.6-clean.pmtiles
+          pmtiles verify build/alan-dem-7.3.6-clean.pmtiles
+
+      - name: Preserve hidden DEM edge collar
+        run: |
+          set -euxo pipefail
+          python tools/patch_dem_edge_collar.py \
+            build/alan-dem-7.3.6-clean.pmtiles \
+            build/alan-dem-7.3.6.pmtiles \
+            --data-part build/map-data-7.3.6-dem-config.js \
+            --collar-m 4500 \
+            --safe-max-elevation-m 1000 \
+            --cap-softness-m 120 \
+            --inner-taper-m 900 \
+            --outer-skirt-m 3200 \
+            --technical-base-m -10000 \
+            --relief-exaggeration 2.8 \
+            --frame-top-m 4000 \
+            --report build/dem-edge-collar-report-7.3.6.json
+          pmtiles verify build/alan-dem-7.3.6.pmtiles
+
+      - name: Prove DEM archive contract
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import io, json
+          from PIL import Image
+          from pmtiles.reader import MmapSource, Reader, all_tiles
+          path='build/alan-dem-7.3.6.pmtiles'
+          with open(path,'rb') as handle:
+              source=MmapSource(handle)
+              reader=Reader(source)
+              metadata=dict(reader.metadata())
+              records=list(all_tiles(source))
+          zooms=sorted({int(z) for (z,x,y),payload in records})
+          if zooms != [7,8,9,10]:
+              raise SystemExit(f'Unexpected physical zooms: {zooms}')
+          for (z,x,y),payload in records:
+              image=Image.open(io.BytesIO(payload))
+              if image.size != (256,256):
+                  raise SystemExit(f'Non-256 tile z{z}/{x}/{y}: {image.size}')
+          proof={'version':'7.3.6','physicalNativeZooms':zooms,'tileSize':256,'highestNativeZoom':10,'noNativeTilesAfterZ10':True,'tileCount':len(records)}
+          open('build/dem-archive-proof-7.3.6.json','w').write(json.dumps(proof,indent=2)+'\n')
+          print(json.dumps(proof,indent=2))
+          PY
+
+      - name: Integrate 7.3.6 runtime architecture
+        run: |
+          set -euxo pipefail
+          python tools/release_7_3_6.py finalize \
+            --dem build/alan-dem-7.3.6.pmtiles \
+            --build-report build/dem-build-report-7.3.6.json \
+            --validation-report build/dem-validation-7.3.6.json \
+            --collar-report build/dem-edge-collar-report-7.3.6.json \
+            | tee build/release-7.3.6.json
+          python tools/release_7_3_6.py validate
+          node --check assets/bootstrap.js
+          node --check assets/map-page.js
+          node --check assets/map-ui.js
+          node --check tests/runtime-contract.mjs
+          node --check tests/map-smoke.mjs
+          node --check tests/terrain-architecture-7.3.6.mjs
+          python -m py_compile tools/build_dem_unified_7_3_6.py tools/release_7_3_6.py
+          node tests/runtime-contract.mjs
+          node tests/terrain-architecture-7.3.6.mjs
+
+      - name: Verify unchanged non-DEM map archives
+        run: |
+          set -euxo pipefail
+          find data -maxdepth 1 -type f -name '*.pmtiles' ! -name 'alan-dem-7.3.5.pmtiles' ! -name 'alan-dem-7.3.6.pmtiles' -print0 | sort -z | xargs -0 sha256sum > build/non-dem-pmtiles-after.sha256
+          diff -u build/non-dem-pmtiles-before.sha256 build/non-dem-pmtiles-after.sha256
+
+      - name: Browser smoke test
+        run: |
+          set -euxo pipefail
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node tests/map-smoke.mjs
+
+      - name: Remove obsolete 7.3.5 terrain patch and DEM
+        run: |
+          set -euxo pipefail
+          git rm -- data/alan-dem-7.3.5.pmtiles assets/terrain-reset-config-7.3.5.js
+          rm -rf node_modules package-lock.json
+
+      - name: Commit complete 7.3.6 release
+        run: |
+          set -euxo pipefail
+          git config user.name 'Alan Map Builder'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A -- ':!build'
+          git commit -m 'Release fast persistent 3D terrain 7.3.6 [skip ci]'
+          git push origin HEAD:7.3.6
+
+      - name: Package complete project and exact file sizes
+        run: |
+          set -euxo pipefail
+          rm -rf /tmp/alan-map-7.3.6
+          mkdir -p /tmp/alan-map-7.3.6
+          rsync -a --exclude='.git' --exclude='build' --exclude='node_modules' ./ /tmp/alan-map-7.3.6/
+          cd /tmp
+          find alan-map-7.3.6 -type f -printf '%P\t%s bytes\n' | sort > alan-map-7.3.6-file-sizes.txt
+          zip -qr alan-map-7.3.6.zip alan-map-7.3.6
+          sha256sum alan-map-7.3.6.zip > alan-map-7.3.6.zip.sha256
+          ls -lh alan-map-7.3.6.zip
+          cat alan-map-7.3.6.zip.sha256
+
+      - name: Upload complete 7.3.6 archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: alan-map-7.3.6-complete
+          path: |
+            /tmp/alan-map-7.3.6.zip
+            /tmp/alan-map-7.3.6-file-sizes.txt
+            /tmp/alan-map-7.3.6.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
