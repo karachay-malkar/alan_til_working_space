@@ -41,7 +41,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gdal-bin sqlite3 zip
           python -m pip install --upgrade pip
-          python -m pip install rasterio pillow numpy shapely pmtiles
+          python -m pip install rasterio pillow numpy shapely scipy pmtiles
           go install github.com/protomaps/go-pmtiles@v1.30.1
           GO_BIN="$(go env GOPATH)/bin"
           ln -sf "$GO_BIN/go-pmtiles" "$GO_BIN/pmtiles"
