@@ -65,6 +65,7 @@ jobs:
       - name: Validate 7.3.5 base and prepare unchanged geography
         run: |
           set -euxo pipefail
+          mkdir -p build
           python tools/release_7_3_6.py prepare | tee build/release-7.3.6-prepare.json
           python - <<'PY'
           import json
