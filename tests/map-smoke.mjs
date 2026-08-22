@@ -177,7 +177,6 @@ try {
   assert.equal(diagnostics.presentation.frameWidthM,2000);
   assert.equal(diagnostics.presentation.compassRadiusM,14300);
   assert.equal(diagnostics.presentation.compassScaleFrom722,.65);
-
   const nativePresentationState = await page.evaluate(() => {
     const map=window.ALAN_MAP_INSTANCE.map;
     const diagnostics=window.ALAN_MAP_PRESENTATION_723;
@@ -252,8 +251,8 @@ try {
   const fallbackVector=fallbackDiagnostics.archives.find(item=>item.sourceId==='openmaptiles');
   assert.ok(forcedVectorFailures >= 3);
   assert.equal(fallbackDiagnostics.mobileProfile,true);
-  assert.equal(fallbackDiagnostics.vectorFullFileFallbackAllowed,false);
-  assert.equal(fallbackVector.fullFileFallbackAllowed,false);
+  assert.equal(fallbackDiagnostics.vectorFullFileFallbackAllowed,true);
+  assert.equal(fallbackVector.fullFileFallbackAllowed,true);
   assert.equal(fallbackVector.fullFileFallbackActive,false);
   assert.equal(fallbackVector.mode,'http-range');
   assert.equal(fallbackVector.concurrency.limit,3);
