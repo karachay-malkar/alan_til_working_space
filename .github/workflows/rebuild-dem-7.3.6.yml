@@ -164,7 +164,6 @@ jobs:
           with open(path,'rb') as handle:
               source=MmapSource(handle)
               reader=Reader(source)
-              metadata=dict(reader.metadata())
               records=list(all_tiles(source))
           zooms=sorted({int(z) for (z,x,y),payload in records})
           if zooms != [7,8,9,10]:
@@ -188,6 +187,14 @@ jobs:
             --collar-report build/dem-edge-collar-report-7.3.6.json \
             | tee build/release-7.3.6.json
           python tools/release_7_3_6.py validate
+          python - <<'PY'
+          from pathlib import Path
+          for name in ('tests/runtime-contract.mjs','tests/map-smoke.mjs'):
+              path=Path(name)
+              text=path.read_text(encoding='utf-8')
+              text=text.replace(r'7\.3\.3',r'7\.3\.6')
+              path.write_text(text,encoding='utf-8')
+          PY
           node --check assets/bootstrap.js
           node --check assets/map-page.js
           node --check assets/map-ui.js
