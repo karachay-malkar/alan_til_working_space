@@ -6,11 +6,13 @@
 })(typeof self !== 'undefined' ? self : this, function (root) {
   'use strict';
 
-  const VERSION = '7.3.3';
-  const DEFAULT_STORAGE_KEY = 'alan-map-stage7.3.3-view';
+  const VERSION = '7.3.6';
+  const DEFAULT_STORAGE_KEY = 'alan-map-stage7.3.6-view';
   const STATE_SCHEMA_VERSION = 1;
   const STATE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
   const LEGACY_STORAGE_KEYS = [
+    'alan-map-stage7.3.5-view',
+    'alan-map-stage7.3.4-view',
     'alan-map-stage7.3.2-view',
     'alan-map-stage7.3.1-view',
     'alan-map-stage7.3-view',
@@ -30,7 +32,7 @@
   ];
   const VISIBILITY_ZOOM = Object.freeze({DISTANT: 7.0, MEDIUM: 8.0, CLOSE: 10.0, DETAIL: 12.0});
   const LABEL_ZOOM = Object.freeze({REGIONAL_FADE_START: 9.5, REGIONAL_MAX: 10.0});
-  const CAMERA_LIMITS = Object.freeze({minZoom: 7.0, maxZoom: 14.3, minPitch: 0, maxPitch: 60});
+  const CAMERA_LIMITS = Object.freeze({minZoom: 7.0, maxZoom: 14.3, minPitch: 45, maxPitch: 60});
   const POINT_STYLE = Object.freeze({
     large:Object.freeze({diameter:10, radius:4, strokeWidth:1}),
     small:Object.freeze({diameter:7, radius:2.5, strokeWidth:1})
@@ -142,7 +144,7 @@
     const rivers = Number(candidate.rivers);
     if (
       !Number.isFinite(zoom) || zoom < CAMERA_LIMITS.minZoom || zoom > CAMERA_LIMITS.maxZoom ||
-      !Number.isFinite(pitch) || pitch < CAMERA_LIMITS.minPitch || pitch > CAMERA_LIMITS.maxPitch ||
+      !Number.isFinite(pitch) || pitch < 0 || pitch > CAMERA_LIMITS.maxPitch ||
       !Number.isFinite(relief) || relief < 1 || relief > 4.2 ||
       !Number.isFinite(rivers) || rivers < 0.7 || rivers > 2.2
     ) return null;
@@ -153,7 +155,7 @@
       center,
       zoom,
       bearing: normalizeBearing(candidate.bearing),
-      pitch,
+      pitch: clamp(pitch, CAMERA_LIMITS.minPitch, CAMERA_LIMITS.maxPitch),
       relief,
       rivers,
       roads: booleanValue('roads'),
@@ -179,10 +181,16 @@
     }
     const profiles = {
       low: {mode: 'low', pixelRatio: 1.25, maxTileCacheZoomLevels: 3, maxTileCacheSize: 64, maxCanvasSize: 6144, antialias: false, forestPattern: false},
-      balanced: {mode: 'balanced', pixelRatio: 1.75, maxTileCacheZoomLevels: 5, maxTileCacheSize: 128, maxCanvasSize: 6144, antialias: false, forestPattern: true},
+      balanced: {mode: 'balanced', pixelRatio: 1.5, maxTileCacheZoomLevels: 5, maxTileCacheSize: 128, maxCanvasSize: 6144, antialias: false, forestPattern: false},
       high: {mode: 'high', pixelRatio: 2, maxTileCacheZoomLevels: 6, maxTileCacheSize: 192, maxCanvasSize: 8192, antialias: true, forestPattern: true}
     };
     return {...profiles[mode], detectedDevicePixelRatio: devicePixelRatio};
+  }
+
+  function hillshadeExaggerationExpression(relief) {
+    const factor = clamp(Number(relief) / 2.8, 0.35, 1.5);
+    const scaled = (value) => clamp(value * factor, 0, 1);
+    return ['interpolate',['linear'],['zoom'],7,scaled(0.80),8,scaled(0.74),9,scaled(0.68),10,scaled(0.62),12,scaled(0.57),14.3,scaled(0.54)];
   }
 
   function taggedFeatureCollection(entries) {
@@ -470,7 +478,7 @@
       zoom: 7.0,
       bearing: 180,
       pitch: 58,
-      relief: 2.55,
+      relief: 2.8,
       rivers: 1.25,
       roads: true,
       riversVisible: true,
@@ -668,7 +676,7 @@
       const baseLayers = [
         {id:'background',type:'background',paint:{'background-color':'#25282a'}},
         {id:'focus-paper',type:'fill',source:'polygons',filter:sourceFilter('focus'),paint:{'fill-color':'#eadfc8','fill-opacity':0.98}},
-        {id:'terrain-hillshade',type:'hillshade',source:'terrain-dem',paint:{'hillshade-illumination-anchor':'viewport','hillshade-illumination-direction':315,'hillshade-exaggeration':0.62,'hillshade-shadow-color':'#294252','hillshade-highlight-color':'#f8efd9','hillshade-accent-color':'#806b50'}},
+        {id:'terrain-hillshade',type:'hillshade',source:'terrain-dem',paint:{'hillshade-illumination-anchor':'viewport','hillshade-illumination-direction':315,'hillshade-exaggeration':hillshadeExaggerationExpression(state.relief),'hillshade-shadow-color':'#294252','hillshade-highlight-color':'#f8efd9','hillshade-accent-color':'#806b50'}},
         {id:'ridge-lines',type:'line',source:'lines',filter:['all',sourceFilter('ridges'),['==',['get','visible'],1]],paint:{'line-color':'#675f55','line-width':['interpolate',['linear'],['zoom'],6,0.48,10,1.12],'line-opacity':['interpolate',['linear'],['zoom'],6,0.24,10,0.40],'line-dasharray':[1.2,2.1]}}
       ];
       if (landcoverTemplate) baseLayers.splice(2,0,{id:'copernicus-landcover',type:'raster',source:'copernicus-landcover',minzoom:Number(data.regionalLandcover.minzoom),maxzoom:Number(data.regionalLandcover.maxzoom),paint:{'raster-opacity':['interpolate',['linear'],['zoom'],7,0.54,10,0.62,13,0.68],'raster-fade-duration':100}});
@@ -949,7 +957,7 @@
       reliefValue.textContent = `${numericValue.toFixed(1)}×`;
       if (!map || !map.isStyleLoaded()) return;
       map.setTerrain({source:'terrain-dem',exaggeration:numericValue});
-      if (map.getLayer('terrain-hillshade')) map.setPaintProperty('terrain-hillshade','hillshade-exaggeration',Math.min(.82,.34+numericValue*.12));
+      if (map.getLayer('terrain-hillshade')) map.setPaintProperty('terrain-hillshade','hillshade-exaggeration',hillshadeExaggerationExpression(numericValue));
       queueSave();
     }
 
@@ -1215,6 +1223,7 @@
           pitch:state.pitch,
           minZoom:CAMERA_LIMITS.minZoom,
           maxZoom:CAMERA_LIMITS.maxZoom,
+          minPitch:CAMERA_LIMITS.minPitch,
           maxPitch:CAMERA_LIMITS.maxPitch,
           renderWorldCopies:false,
           pixelRatio:Math.min(root.devicePixelRatio || 1,qualityProfile.pixelRatio),

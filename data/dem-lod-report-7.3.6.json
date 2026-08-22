@@ -1,0 +1,260 @@
+{
+  "version": "7.3.6",
+  "archive": "data/alan-dem-7.3.6.pmtiles",
+  "bytes": 4084973,
+  "sha256": "9cc415897b2b25e077f960e3d191cd77417f99c641b517bb1094f638b6fb22c0",
+  "tileSize": 256,
+  "heightQuantizationM": 5,
+  "physicalNativeZooms": [
+    7,
+    8,
+    9,
+    10
+  ],
+  "highestNativeZoom": 10,
+  "overzoomFrom": 10,
+  "lodModel": "single-pyramid-native-z7-z10-overzoom-z10",
+  "numericLineage": "sequential-z10-z9-z8-z7-area-average-5m",
+  "physicalGroundMPerPixelAtCenter": {
+    "7": 885.148,
+    "8": 442.574,
+    "9": 221.287,
+    "10": 110.644
+  },
+  "effectiveGroundMPerInformationPixelAtCenter": {
+    "7": 885.148,
+    "8": 442.574,
+    "9": 221.287,
+    "10": 110.644
+  },
+  "build": {
+    "version": "7.3.6",
+    "tile_size": 256,
+    "minzoom": 7,
+    "maxzoom": 10,
+    "highest_native_zoom": 10,
+    "overzoom_from": 10,
+    "height_quantization_m": 5.0,
+    "encoding": "mapbox",
+    "lod_model": "single-pyramid-native-z7-z10-overzoom-z10",
+    "physical_native_zooms": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "numeric_lineage": "sequential-z10-z9-z8-z7-area-average-5m",
+    "numeric_level_lineage": {
+      "10": "source-dem-to-web-mercator-bilinear-then-5m-quantization",
+      "9": "area-average-downsample-of-z10-then-5m-quantization",
+      "8": "area-average-downsample-of-z9-then-5m-quantization",
+      "7": "area-average-downsample-of-z8-then-5m-quantization"
+    },
+    "physical_ground_m_per_pixel_at_center": {
+      "7": 885.148,
+      "8": 442.574,
+      "9": 221.287,
+      "10": 110.644
+    },
+    "effective_ground_m_per_information_pixel_at_center": {
+      "7": 885.148,
+      "8": 442.574,
+      "9": 221.287,
+      "10": 110.644
+    },
+    "numeric_level_sha256": {
+      "7": "173802f8e2490f24a0c9835711553251b35358b583e3f7cb2027fc48d7cfd681",
+      "8": "2f535baa4cdfc25caecf33c046ebf98724604af58e9055c5ee1fa508f5322382",
+      "9": "bc47f2c2e00c6d7222cc71617243e41b405ff944372e9b101806edaf6216016d",
+      "10": "9779c9a4548a08f33e17e1f8f98ee8bbcb4575be4b653aa1773a52d8f6811120"
+    },
+    "extent_3857": [
+      4383204.95,
+      5009377.086,
+      5009377.086,
+      5635549.221
+    ],
+    "z7_tile_rect": {
+      "x_min": 78,
+      "x_max": 79,
+      "y_min": 46,
+      "y_max": 47
+    },
+    "per_zoom": {
+      "7": {
+        "tiles_written": 4,
+        "outside_tiles_skipped": 0,
+        "partial_tiles_masked": 4,
+        "rgb_tiles": 0,
+        "rgba_tiles": 4,
+        "png_bytes": 81747
+      },
+      "8": {
+        "tiles_written": 9,
+        "outside_tiles_skipped": 7,
+        "partial_tiles_masked": 9,
+        "rgb_tiles": 0,
+        "rgba_tiles": 9,
+        "png_bytes": 264111
+      },
+      "9": {
+        "tiles_written": 20,
+        "outside_tiles_skipped": 44,
+        "partial_tiles_masked": 16,
+        "rgb_tiles": 4,
+        "rgba_tiles": 16,
+        "png_bytes": 843908
+      },
+      "10": {
+        "tiles_written": 62,
+        "outside_tiles_skipped": 194,
+        "partial_tiles_masked": 34,
+        "rgb_tiles": 28,
+        "rgba_tiles": 34,
+        "png_bytes": 2559367
+      }
+    },
+    "candidate_tiles": 340,
+    "tiles_written": 95,
+    "outside_tiles_skipped": 245,
+    "partial_tiles_masked": 63,
+    "interior_tiles": 32,
+    "rgb_tiles": 32,
+    "rgba_tiles": 63,
+    "transparent_pixels": 2419509,
+    "valid_pixels": 3806411,
+    "encoded_png_bytes": 3749133
+  },
+  "validation": {
+    "valid": true,
+    "native_zooms": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tile_size": 256,
+    "tile_counts": {
+      "7": 4,
+      "8": 9,
+      "9": 20,
+      "10": 62
+    },
+    "png_modes": {
+      "7": [
+        "RGBA"
+      ],
+      "8": [
+        "RGBA"
+      ],
+      "9": [
+        "RGB",
+        "RGBA"
+      ],
+      "10": [
+        "RGB",
+        "RGBA"
+      ]
+    },
+    "lod_model": "single-pyramid-native-z7-z10-overzoom-z10",
+    "numeric_lineage": "sequential-z10-z9-z8-z7-area-average-5m",
+    "height_quantization_m": 5,
+    "no_native_tiles_after_z10": true
+  },
+  "edgeCollar": {
+    "version": "7.2.3-r1",
+    "mode": "hidden-tapered-dem-edge-collar",
+    "collar_m": 4500,
+    "inner_taper_m": 900,
+    "outer_skirt_m": 3200,
+    "safe_max_elevation_m": 1000,
+    "cap_softness_m": 120,
+    "technical_base_m": -10000,
+    "relief_exaggeration": 2.8,
+    "rendered_safe_max_m": 2800,
+    "frame_top_m": 4000,
+    "frame_clearance_m": 1200,
+    "fill_method": "smooth-height-cap-plus-hidden-outer-descent",
+    "alpha_inside_collar": 255,
+    "terrain_base_drop_removed_near_map_frame": true,
+    "terrain_above_frame_prevented": true,
+    "visible_dem_inside_frame_preserved": true,
+    "terrain_changes_limited_to_hidden_frame_band": true,
+    "pmtiles_bytes_before": 3749943,
+    "pmtiles_bytes_after": 4084973,
+    "total_tiles_before": 95,
+    "total_tiles_after": 101,
+    "changed_tiles": 65,
+    "new_tiles": 6,
+    "collar_pixels": 402715,
+    "inside_taper_pixels": 87443,
+    "inside_capped_pixels": 39465,
+    "outer_descent_pixels": 110201,
+    "per_zoom": [
+      {
+        "zoom": 7,
+        "boundary_tiles": 4,
+        "candidate_tiles": 16,
+        "changed_tiles": 4,
+        "new_tiles": 0,
+        "collar_pixels": 5303,
+        "inside_taper_pixels": 1720,
+        "inside_capped_pixels": 785,
+        "outer_descent_pixels": 1269,
+        "collar_px": 6,
+        "inner_taper_px": 2,
+        "ground_m_per_pixel": 885.148,
+        "minimum_written_height_m": -9904.1,
+        "maximum_written_height_m": 1000.0
+      },
+      {
+        "zoom": 8,
+        "boundary_tiles": 9,
+        "candidate_tiles": 27,
+        "changed_tiles": 9,
+        "new_tiles": 1,
+        "collar_pixels": 19712,
+        "inside_taper_pixels": 5171,
+        "inside_capped_pixels": 2338,
+        "outer_descent_pixels": 5143,
+        "collar_px": 11,
+        "inner_taper_px": 3,
+        "ground_m_per_pixel": 442.574,
+        "minimum_written_height_m": -9904.0,
+        "maximum_written_height_m": 1000.0
+      },
+      {
+        "zoom": 9,
+        "boundary_tiles": 16,
+        "candidate_tiles": 44,
+        "changed_tiles": 17,
+        "new_tiles": 1,
+        "collar_pixels": 76750,
+        "inside_taper_pixels": 17254,
+        "inside_capped_pixels": 7792,
+        "outer_descent_pixels": 20987,
+        "collar_px": 21,
+        "inner_taper_px": 5,
+        "ground_m_per_pixel": 221.287,
+        "minimum_written_height_m": -9904.0,
+        "maximum_written_height_m": 1000.0
+      },
+      {
+        "zoom": 10,
+        "boundary_tiles": 34,
+        "candidate_tiles": 99,
+        "changed_tiles": 35,
+        "new_tiles": 4,
+        "collar_pixels": 300950,
+        "inside_taper_pixels": 63298,
+        "inside_capped_pixels": 28550,
+        "outer_descent_pixels": 82802,
+        "collar_px": 41,
+        "inner_taper_px": 9,
+        "ground_m_per_pixel": 110.644,
+        "minimum_written_height_m": -9904.2,
+        "maximum_written_height_m": 1000.0
+      }
+    ]
+  }
+}

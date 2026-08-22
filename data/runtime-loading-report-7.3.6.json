@@ -1,0 +1,24 @@
+{
+  "version": "7.3.6",
+  "baseVersion": "7.3.5",
+  "demArchivePath": "data/alan-dem-7.3.6.pmtiles",
+  "demArchiveBytes": 4084973,
+  "demTileSize": 256,
+  "demPhysicalNativeZooms": [
+    7,
+    8,
+    9,
+    10
+  ],
+  "demOverzoomFrom": 10,
+  "heightQuantizationM": 5,
+  "terrainInitialStyleEnabled": true,
+  "terrainSourceSwitching": false,
+  "manualTilePrefetch": false,
+  "minPitch": 45,
+  "defaultPitch": 58,
+  "defaultRelief": 2.8,
+  "deferredDataScript": "assets/map-data-deferred.js",
+  "deferredPointsScript": "assets/map-data-points.js",
+  "snowSourceDeferredUntilFirstIdle": true
+}

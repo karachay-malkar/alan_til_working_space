@@ -1,13 +1,12 @@
 (() => {
   'use strict';
 
-  const RELEASE = '7.3.5';
+  const RELEASE = '7.3.6';
   const baseUrl = new URL('.', document.currentScript.src);
   const scripts = [
     'maplibre.js',
     'pmtiles.js',
     'map-data-core.js',
-    'terrain-reset-config-7.3.5.js',
     'map-core.js',
     'map-ui.js',
     'map-presentation-r2.js',

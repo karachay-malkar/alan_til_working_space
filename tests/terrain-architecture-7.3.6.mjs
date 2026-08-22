@@ -1,0 +1,35 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const marker='window.ALAN_MAP_DATA = ';
+const wrapped=fs.readFileSync('assets/map-data-core.js','utf8').trim();
+const data=JSON.parse(wrapped.slice(marker.length,-1));
+const ui=fs.readFileSync('assets/map-ui.js','utf8');
+const page=fs.readFileSync('assets/map-page.js','utf8');
+const bootstrap=fs.readFileSync('assets/bootstrap.js','utf8');
+
+assert.equal(data.version,'7.3.6');
+assert.equal(data.regionalDem.archivePath,'data/alan-dem-7.3.6.pmtiles');
+assert.deepEqual(data.regionalDem.physicalNativeZooms,[7,8,9,10]);
+assert.equal(data.regionalDem.maxzoom,10);
+assert.equal(data.regionalDem.overzoomFrom,10);
+assert.equal(data.regionalDem.tileSize,256);
+assert.equal(data.regionalDem.heightQuantizationM,5);
+assert.equal(data.regionalDem.runtimeTerrainSources,1);
+assert.equal(data.regionalDem.transitionMode,'maplibre-native-single-source');
+assert.equal(data.regionalDem.terrainController,false);
+assert.match(ui,/minPitch: 45/);
+assert.match(ui,/pitch: 58/);
+assert.match(ui,/relief: 2\.8/);
+assert.match(ui,/terrain: \{source:'terrain-dem',exaggeration:state\.relief\}/);
+assert.match(ui,/hillshadeExaggerationExpression/);
+assert.match(ui,/minPitch:CAMERA_LIMITS\.minPitch/);
+assert.ok(!page.includes('installPrefetch'));
+assert.ok(!page.includes('PREFETCH_NEIGHBORS'));
+assert.ok(!page.includes('ALAN_MAP_PREFETCH_PM_TILE'));
+assert.match(page,/class RangeLruCache/);
+assert.match(page,/class NetworkGate/);
+assert.match(page,/class InstrumentedRangeSource/);
+assert.ok(!bootstrap.includes('terrain-reset-config-7.3.5.js'));
+assert.match(bootstrap,/const RELEASE = '7\.3\.6'/);
+console.log('terrain-architecture-7.3.6: ok');

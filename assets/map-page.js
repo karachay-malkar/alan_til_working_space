@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '7.3.3';
+  const VERSION = '7.3.6';
   const RANGE_CACHE_BYTES = (() => {
     const memory = Number(navigator.deviceMemory || 0);
     if (memory > 0 && memory <= 2) return 12 * 1024 * 1024;
@@ -9,7 +9,6 @@
     return 40 * 1024 * 1024;
   })();
   const RANGE_CACHE_ENTRIES = 256;
-  const PREFETCH_NEIGHBORS = Object.freeze([[1,0],[-1,0],[0,1],[0,-1]]);
   const RANGE_RETRY_DELAYS_MS = Object.freeze([0,220,680]);
   const VECTOR_RANGE_RETRY_DELAYS_MS = Object.freeze([0,360,1050,2200]);
   const VECTOR_FULL_FILE_FALLBACK_MAX_BYTES = 24 * 1024 * 1024;
@@ -32,10 +31,6 @@
     renderFps:null,
     renderIntervals:[],
     lastRenderAt:null,
-    prefetchRuns:0,
-    prefetchedTiles:0,
-    prefetchErrors:0,
-    prefetchEnabled:false,
     deferredDataRequestedMs:null,
     deferredDataReadyMs:null,
     deferredPointsRequestedMs:null,
@@ -367,19 +362,6 @@
     orientationTimer = setTimeout(applyViewportHeight, 180);
   }
 
-  function lonToTileX(lon, zoom) {
-    const count = 2 ** zoom;
-    return Math.max(0, Math.min(count - 1, Math.floor((Number(lon) + 180) / 360 * count)));
-  }
-
-  function latToTileY(lat, zoom) {
-    const count = 2 ** zoom;
-    const clipped = Math.max(-85.05112878, Math.min(85.05112878, Number(lat)));
-    const radians = clipped * Math.PI / 180;
-    const value = (1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2 * count;
-    return Math.max(0, Math.min(count - 1, Math.floor(value)));
-  }
-
   function isMobileTransportProfile() {
     const coarsePointer = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
     const touchDevice = Number(navigator.maxTouchPoints || 0) > 0;
@@ -392,14 +374,6 @@
     if (connection?.saveData) return false;
     const effectiveType = String(connection?.effectiveType || '').toLowerCase();
     return !['slow-2g','2g','3g'].includes(effectiveType);
-  }
-
-  function canPrefetch() {
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (connection?.saveData) return false;
-    const effectiveType = String(connection?.effectiveType || '').toLowerCase();
-    if (['slow-2g','2g','3g'].includes(effectiveType)) return false;
-    return !isMobileTransportProfile();
   }
 
   function waitForRetry(delayMs, signal) {
@@ -422,68 +396,6 @@
     const message = String(error?.message || error || '');
     if (/404|416|range not satisfiable|etag mismatch/i.test(message)) return false;
     return /failed to fetch|network|load failed|timeout|timed out|connection|bad response code: (429|5\d\d)|unexpected byte-range response|http 200 for a byte-range request|incomplete byte range|502|503|504|429/i.test(message) || error instanceof TypeError;
-  }
-
-  function scheduleIdle(callback) {
-    if (typeof requestIdleCallback === 'function') return requestIdleCallback(callback,{timeout:900});
-    return setTimeout(() => callback({didTimeout:true,timeRemaining:() => 0}),180);
-  }
-
-  function installPrefetch(map, archiveRecords, data) {
-    if (!map || !canPrefetch()) return false;
-    const seen = new Set();
-    let scheduled = false;
-
-    const run = async () => {
-      scheduled = false;
-      if (!map || map.isMoving?.()) return;
-      const center = map.getCenter();
-      const mapZoom = Math.max(0, Math.floor(map.getZoom()));
-      const jobs = [];
-      for (const record of archiveRecords) {
-        if (!record.prefetch) continue;
-        const minzoom = Number(record.config?.minzoom ?? 0);
-        const maxzoom = Number(record.config?.maxzoom ?? mapZoom);
-        const zoom = Math.max(minzoom, Math.min(maxzoom, mapZoom));
-        const centerX = lonToTileX(center.lng, zoom);
-        const centerY = latToTileY(center.lat, zoom);
-        const count = 2 ** zoom;
-        for (const [dx,dy] of PREFETCH_NEIGHBORS) {
-          const x = centerX + dx;
-          const y = centerY + dy;
-          if (x < 0 || y < 0 || x >= count || y >= count) continue;
-          const key = `${record.path}:${zoom}/${x}/${y}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          jobs.push(
-            record.archive.getZxy(zoom,x,y).then(() => {
-              performanceState.prefetchedTiles += 1;
-            }).catch(() => {
-              performanceState.prefetchErrors += 1;
-            })
-          );
-        }
-      }
-      if (seen.size > 160) {
-        const keep = [...seen].slice(-96);
-        seen.clear();
-        keep.forEach((key) => seen.add(key));
-      }
-      if (jobs.length) {
-        performanceState.prefetchRuns += 1;
-        await Promise.allSettled(jobs);
-      }
-    };
-
-    const queue = () => {
-      if (scheduled || map.isMoving?.()) return;
-      scheduled = true;
-      scheduleIdle(run);
-    };
-    map.on('moveend',queue);
-    map.on('idle',queue);
-    queue();
-    return true;
   }
 
   function installRenderMetrics(map) {
@@ -533,29 +445,12 @@
       return record;
     };
     const configurations = [
-      {path:data.regionalDem.archivePath,sourceId:'terrain-dem',config:data.regionalDem,prefetch:true,maxConcurrent:mobileTransport?6:10,retryDelays:RANGE_RETRY_DELAYS_MS},
-      {path:data.regionalVector.archivePath,sourceId:'openmaptiles',config:data.regionalVector,prefetch:true,maxConcurrent:mobileTransport?3:8,retryDelays:VECTOR_RANGE_RETRY_DELAYS_MS,allowFullFileFallback:vectorFullFileFallbackAllowed,fullFileFallbackMaxBytes:VECTOR_FULL_FILE_FALLBACK_MAX_BYTES},
-      ...(data.regionalLandcover?.archivePath ? [{path:data.regionalLandcover.archivePath,sourceId:'copernicus-landcover',config:data.regionalLandcover,prefetch:false,maxConcurrent:mobileTransport?3:6,retryDelays:RANGE_RETRY_DELAYS_MS}] : [])
+      {path:data.regionalDem.archivePath,sourceId:'terrain-dem',config:data.regionalDem,maxConcurrent:mobileTransport?6:10,retryDelays:RANGE_RETRY_DELAYS_MS},
+      {path:data.regionalVector.archivePath,sourceId:'openmaptiles',config:data.regionalVector,maxConcurrent:mobileTransport?3:8,retryDelays:VECTOR_RANGE_RETRY_DELAYS_MS,allowFullFileFallback:vectorFullFileFallbackAllowed,fullFileFallbackMaxBytes:VECTOR_FULL_FILE_FALLBACK_MAX_BYTES},
+      ...(data.regionalLandcover?.archivePath ? [{path:data.regionalLandcover.archivePath,sourceId:'copernicus-landcover',config:data.regionalLandcover,maxConcurrent:mobileTransport?3:6,retryDelays:RANGE_RETRY_DELAYS_MS}] : [])
     ];
 
     configurations.forEach(registerArchive);
-
-    window.ALAN_MAP_PREFETCH_PM_TILE = async ({archivePath,z,x,y,reason='runtime'}) => {
-      const path = String(archivePath || '');
-      const record = archiveByPath.get(path);
-      if (!record?.archive) throw new Error(`Alan Map: PMTiles archive is not registered for prefetch: ${path}`);
-      const zoom = Number(z);
-      const tileX = Number(x);
-      const tileY = Number(y);
-      if (![zoom,tileX,tileY].every(Number.isInteger)) throw new Error('Alan Map: invalid PMTiles prefetch coordinate.');
-      const before = performance.now();
-      const value = await record.archive.getZxy(zoom,tileX,tileY);
-      document.dispatchEvent(new CustomEvent('alan-map:pmtiles-prefetched',{detail:{
-        archivePath:path,sourceId:record.sourceId,z:zoom,x:tileX,y:tileY,reason,
-        durationMs:performance.now()-before
-      }}));
-      return value;
-    };
 
     const prepareSnowSource = () => {
       if (!data.regionalSnow?.available || !data.regionalSnow?.archivePath) return null;
@@ -658,14 +553,7 @@
     window.ALAN_MAP_INSTANCE = mapInstance;
 
     const map = mapInstance?.map;
-    if (map) {
-      installRenderMetrics(map);
-      map.once('idle',() => {
-        scheduleIdle(() => {
-          performanceState.prefetchEnabled = installPrefetch(map,archiveRecords,data);
-        });
-      });
-    }
+    if (map) installRenderMetrics(map);
 
     window.ALAN_MAP_PERFORMANCE_DIAGNOSTICS = () => {
       const transport = window.ALAN_MAP_PMTILES_RANGE_DIAGNOSTICS?.() || {};
@@ -679,10 +567,6 @@
         renderFps:performanceState.renderFps,
         totalNetworkBytes,
         totalNetworkRequests,
-        prefetchRuns:performanceState.prefetchRuns,
-        prefetchedTiles:performanceState.prefetchedTiles,
-        prefetchErrors:performanceState.prefetchErrors,
-        prefetchEnabled:performanceState.prefetchEnabled,
         deferredDataRequestedMs:performanceState.deferredDataRequestedMs,
         deferredDataReadyMs:performanceState.deferredDataReadyMs,
         deferredPointsRequestedMs:performanceState.deferredPointsRequestedMs,
