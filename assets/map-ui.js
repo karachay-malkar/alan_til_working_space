@@ -192,7 +192,7 @@
   function hillshadeExaggerationExpression(relief) {
     const factor = clamp(Number(relief) / 2.8, 0.35, 1.5);
     const scaled = (value) => clamp(value * factor, 0, 1);
-    return ['interpolate',['linear'],['zoom'],7,scaled(0.80),8,scaled(0.74),9,scaled(0.68),10,scaled(0.62),12,scaled(0.57),14.3,scaled(0.54)];
+    return ['interpolate',['linear'],['zoom'],7,scaled(0.86),8,scaled(0.80),9,scaled(0.74),10,scaled(0.68),12,scaled(0.63),14.3,scaled(0.60)];
   }
 
   function taggedFeatureCollection(entries) {
@@ -678,7 +678,7 @@
       const baseLayers = [
         {id:'background',type:'background',paint:{'background-color':'#25282a'}},
         {id:'focus-paper',type:'fill',source:'polygons',filter:sourceFilter('focus'),paint:{'fill-color':'#eadfc8','fill-opacity':0.98}},
-        {id:'terrain-hillshade',type:'hillshade',source:'terrain-dem',paint:{'hillshade-illumination-anchor':'viewport','hillshade-illumination-direction':315,'hillshade-exaggeration':hillshadeExaggerationExpression(state.relief),'hillshade-shadow-color':'#294252','hillshade-highlight-color':'#f8efd9','hillshade-accent-color':'#806b50'}},
+        {id:'terrain-hillshade',type:'hillshade',source:'terrain-dem',paint:{'hillshade-illumination-anchor':'viewport','hillshade-illumination-direction':315,'hillshade-exaggeration':hillshadeExaggerationExpression(state.relief),'hillshade-shadow-color':'#243b49','hillshade-highlight-color':'#f8efd9','hillshade-accent-color':'#786148'}},
         {id:'ridge-lines',type:'line',source:'lines',filter:['all',sourceFilter('ridges'),['==',['get','visible'],1]],paint:{'line-color':'#675f55','line-width':['interpolate',['linear'],['zoom'],6,0.48,10,1.12],'line-opacity':['interpolate',['linear'],['zoom'],6,0.24,10,0.40],'line-dasharray':[1.2,2.1]}}
       ];
       if (landcoverTemplate) baseLayers.splice(2,0,{id:'copernicus-landcover',type:'raster',source:'copernicus-landcover',minzoom:Number(data.regionalLandcover.minzoom),maxzoom:Number(data.regionalLandcover.maxzoom),paint:{'raster-opacity':['interpolate',['linear'],['zoom'],7,0.54,10,0.62,13,0.68],'raster-fade-duration':100}});
