@@ -1,0 +1,30 @@
+{
+  "version": "7.3.8",
+  "baseVersion": "7.3.7",
+  "demArchivePath": "data/alan-dem-7.3.7.pmtiles",
+  "demArchiveBytes": 12466762,
+  "demTileSize": 256,
+  "demPhysicalNativeZooms": [
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "demOverzoomFrom": 11,
+  "heightQuantizationM": 5,
+  "terrainInitialStyleEnabled": true,
+  "terrainSourceSwitching": false,
+  "manualTilePrefetch": false,
+  "minPitch": 45,
+  "defaultPitch": 58,
+  "defaultRelief": 2.8,
+  "terrainElevationBrowserProbe": true,
+  "snowSourceDeferredUntilFirstIdle": true,
+  "snowRuntimeType": "vector",
+  "snowArchivePath": "data/alan-snow-vector-7.3.8.pmtiles",
+  "snowMinzoom": 7,
+  "snowArchiveMaxzoom": 13,
+  "snowDisplayMaxzoom": 14.3,
+  "snowReliefContoursM": 200
+}

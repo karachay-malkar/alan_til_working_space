@@ -11,11 +11,11 @@ const dataSource = fs.readFileSync('assets/map-data.part-000.js','utf8') + fs.re
 const runtimeDataSource = fs.readFileSync('assets/map-data-core.js','utf8');
 const deferredDataSource = fs.readFileSync('assets/map-data-deferred.js','utf8');
 const deferredPointsSource = fs.readFileSync('assets/map-data-points.js','utf8');
-const runtimeLoadingReport = JSON.parse(fs.readFileSync('data/runtime-loading-report-7.3.7.json','utf8'));
+const runtimeLoadingReport = JSON.parse(fs.readFileSync('data/runtime-loading-report-7.3.8.json','utf8'));
 const indexSource = fs.readFileSync('index.html','utf8');
 const nameReview = JSON.parse(fs.readFileSync('data/settlement-name-review-7.2.4.json','utf8'));
 
-assert.match(uiSource, /const VERSION = '7\.3\.7'/);
+assert.match(uiSource, /const VERSION = '7\.3\.8'/);
 assert.ok(!bootstrap.includes('fantasy-relief.js'));
 assert.ok(!bootstrap.includes('fantasy-style.js'));
 assert.ok(!fs.existsSync('assets/fantasy-relief.js'));
@@ -24,11 +24,13 @@ assert.match(uiSource, /data\.regionalDem\.encoding \|\| 'terrarium'/);
 assert.match(uiSource, /copernicus-landcover/);
 assert.match(page, /regionalLandcover\?\.archivePath/);
 assert.match(page, /regionalSnow\?\.available/);
-assert.match(uiSource, /satellite-snow/);
+assert.match(uiSource, /vector-snow-fill/);
+assert.match(uiSource, /snow-relief-contours/);
 assert.ok(!uiSource.includes('satellite-snow-permanent'));
 assert.ok(!uiSource.includes('satellite-snow-seasonal'));
 assert.match(uiSource, /if \(!snowTemplate\) natureLayers\.push/);
-assert.ok(!uiSource.includes("sources.snow = {type:'raster'"));
+assert.ok(!uiSource.includes("type:'raster',\n          url:snowTemplate"));
+assert.match(uiSource, /type:'vector',\n          url:snowTemplate/);
 assert.match(uiSource,/ensureSnowSource/);
 assert.match(uiSource,/ensureDeferredData/);
 assert.match(page,/deferredDataScript/);
@@ -52,7 +54,7 @@ assert.ok(!page.includes('installPrefetch'));
 assert.match(page, /RANGE_RETRY_DELAYS_MS/);
 assert.match(page, /navigator\.maxTouchPoints/);
 assert.ok(!page.includes('prefetchEnabled'));
-assert.match(indexSource, /bootstrap\.js\?v=7\.3\.7/);
+assert.match(indexSource, /bootstrap\.js\?v=7\.3\.8/);
 assert.ok(!indexSource.includes('map-presentation-r2.js?v='));
 assert.ok(!indexSource.includes('map-presentation.js?v='));
 assert.match(bootstrap,/map-presentation-r2\.js/);
@@ -176,10 +178,10 @@ const parseWrappedPayload = (source, wrapper) => {
 const runtimeData = parseWrappedPayload(runtimeDataSource,'window.ALAN_MAP_DATA = ');
 const deferredData = parseWrappedPayload(deferredDataSource,'window.ALAN_MAP_DEFERRED_DATA = ');
 const deferredPoints = parseWrappedPayload(deferredPointsSource,'window.ALAN_MAP_POINT_DATA = ');
-assert.equal(runtimeData.version,'7.3.7');
-assert.equal(runtimeData.applicationVersion,'7.3.7');
-assert.equal(runtimeData.stage,'7.3.7');
-assert.equal(runtimeData.runtimeLoading?.version,'7.3.7');
+assert.equal(runtimeData.version,'7.3.8');
+assert.equal(runtimeData.applicationVersion,'7.3.8');
+assert.equal(runtimeData.stage,'7.3.8');
+assert.equal(runtimeData.runtimeLoading?.version,'7.3.8');
 assert.equal(runtimeData.runtimeLoading?.maplibreBundle,'assets/maplibre.js');
 assert.equal(runtimeData.runtimeLoading?.coreDataScript,'assets/map-data-core.js');
 assert.equal(runtimeData.runtimeLoading?.deferredDataScript,'assets/map-data-deferred.js');
@@ -187,10 +189,20 @@ assert.equal(runtimeData.runtimeLoading?.deferredPointsScript,'assets/map-data-p
 assert.deepEqual(runtimeData.runtimeLoading?.deferredKeys,['regionalLabelImages']);
 assert.deepEqual(runtimeData.runtimeLoading?.deferredPointKeys,['objects','modernObjects','passes','peaks','highPeaks']);
 assert.equal(runtimeData.runtimeLoading?.snowSourceDeferredUntilFirstIdle,true);
+assert.equal(runtimeData.regionalSnow?.version,'7.3.8');
+assert.equal(runtimeData.regionalSnow?.archivePath,'data/alan-snow-vector-7.3.8.pmtiles');
+assert.equal(runtimeData.regionalSnow?.minzoom,7);
+assert.equal(runtimeData.regionalSnow?.maxzoom,13);
+assert.equal(runtimeData.regionalSnow?.displayMaxzoom,14.3);
+assert.equal(runtimeData.regionalSnow?.kind,'vector-snow-polygons');
+assert.equal(runtimeData.regionalSnow?.sourceLayer,'snow');
+assert.equal(runtimeData.regionalSnow?.contourSourceLayer,'snow_contour');
+assert.equal(runtimeData.regionalSnow?.contourMinzoom,9.5);
+assert.equal(runtimeData.regionalSnow?.contourIntervalM,200);
 assert.equal(Object.keys(runtimeData.regionalLabelImages || {}).length,0);
-assert.equal(deferredData.version,'7.3.7');
+assert.equal(deferredData.version,'7.3.8');
 assert.equal(Object.keys(deferredData.regionalLabelImages || {}).length,16);
-assert.equal(runtimeLoadingReport.version,'7.3.7');
+assert.equal(runtimeLoadingReport.version,'7.3.8');
 assert.equal(runtimeLoadingReport.manualTilePrefetch,false);
 assert.equal(runtimeLoadingReport.terrainInitialStyleEnabled,true);
 assert.equal(runtimeLoadingReport.minPitch,45);
@@ -199,7 +211,7 @@ assert.equal((runtimeData.modernObjects?.features || []).length,0);
 assert.equal((runtimeData.passes?.features || []).length,0);
 assert.equal((runtimeData.peaks?.features || []).length,0);
 assert.equal((runtimeData.highPeaks?.features || []).length,0);
-assert.equal(deferredPoints.version,'7.3.7');
+assert.equal(deferredPoints.version,'7.3.8');
 const deferredActiveSettlements=(deferredPoints.objects?.features || []).filter(feature =>
   feature.properties?.object_type === 'settlement' && feature.properties?.object_subtype !== 'historic_settlement'
 );
@@ -362,7 +374,7 @@ if (data.regionalSnow?.available) {
   assert.equal(data.regionalSnow.sourceArchives.seasonal, 'data/alan-snow-seasonal-7.2.5.pmtiles');
   assert.ok(!('snowGapPermanent' in data));
   assert.ok(!('snowGapSeasonal' in data));
-  assert.ok(fs.existsSync(data.regionalSnow.archivePath));
+  assert.equal(fs.existsSync(data.regionalSnow.archivePath), false);
   assert.ok(fs.existsSync(data.regionalSnow.canonicalReportPath));
 }
 

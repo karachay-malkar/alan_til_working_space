@@ -1,0 +1,273 @@
+name: Build Alan Map 7.3.8 vector snow
+
+on:
+  push:
+    branches: ['7.3.8']
+    paths:
+      - 'tools/build_vector_snow_7_3_8.py'
+      - 'tools/release_7_3_8.py'
+      - 'tests/snow-vector-7.3.8.mjs'
+      - '.github/workflows/rebuild-vector-snow-7.3.8.yml'
+  pull_request:
+    branches: ['7.3.7']
+    paths:
+      - 'tools/build_vector_snow_7_3_8.py'
+      - 'tools/release_7_3_8.py'
+      - 'tests/snow-vector-7.3.8.mjs'
+      - '.github/workflows/rebuild-vector-snow-7.3.8.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: alan-map-7-3-8-vector-snow
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 30
+          ref: 7.3.8
+
+      - name: Publish run handle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > data/release-run-7.3.8.json <<EOF
+          {"version":"7.3.8","status":"building","runId":${{ github.run_id }},"runAttempt":${{ github.run_attempt }},"sourceSha":"${{ github.sha }}"}
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- data/release-run-7.3.8.json
+          git commit -m "Start 7.3.8 release build [skip ci]"
+          git pull --rebase origin 7.3.8
+          git push origin HEAD:7.3.8
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+
+      - name: Install geospatial tools
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gdal-bin zip
+          python -m pip install --upgrade pip
+          python -m pip install -r tools/requirements-dem.txt
+          python -m pip install -r tools/requirements.txt
+          python -m pip install rasterio==1.4.3 affine==2.4.0 pyproj==3.7.1
+          go install github.com/protomaps/go-pmtiles@v1.30.1
+          GO_BIN="$(go env GOPATH)/bin"
+          if [ -x "$GO_BIN/go-pmtiles" ]; then
+            ln -sf "$GO_BIN/go-pmtiles" "$GO_BIN/pmtiles"
+          fi
+          echo "$GO_BIN" >> "$GITHUB_PATH"
+          "$GO_BIN/pmtiles" version || true
+          ogr2ogr --version
+          gdal_contour --version || true
+
+      - name: Verify exact 7.3.7 snow and DEM inputs
+        run: |
+          set -euxo pipefail
+          test -f data/alan-snow-7.3.1.pmtiles
+          test -f data/alan-dem-7.3.7.pmtiles
+          test -f data/alan-vector-7.2.pmtiles
+          pmtiles verify data/alan-snow-7.3.1.pmtiles
+          pmtiles verify data/alan-dem-7.3.7.pmtiles
+
+      - name: Materialize source raster tiles as MBTiles
+        run: |
+          set -euxo pipefail
+          mkdir -p build
+          python - <<'PY'
+          from pmtiles.convert import pmtiles_to_mbtiles
+          pmtiles_to_mbtiles('data/alan-snow-7.3.1.pmtiles','build/source-snow-7.3.1.mbtiles')
+          pmtiles_to_mbtiles('data/alan-dem-7.3.7.pmtiles','build/source-dem-7.3.7.mbtiles')
+          PY
+          ls -lh build/source-*.mbtiles
+
+      - name: Polygonize crisp snow and derive snow-only DEM contours
+        run: |
+          set -euxo pipefail
+          python tools/build_vector_snow_7_3_8.py \
+            --snow-mbtiles build/source-snow-7.3.1.mbtiles \
+            --dem-mbtiles build/source-dem-7.3.7.mbtiles \
+            --output-gpkg build/snow-vector-7.3.8.gpkg \
+            --work-dir build/vector-snow-work \
+            --report build/snow-vector-report-7.3.8.json
+          ogrinfo -so build/snow-vector-7.3.8.gpkg snow
+          ogrinfo -so build/snow-vector-7.3.8.gpkg snow_contour
+
+      - name: Build vector MVT and PMTiles archive
+        run: |
+          set -euxo pipefail
+          ogr2ogr -f MVT build/alan-snow-vector-7.3.8.mbtiles build/snow-vector-7.3.8.gpkg \
+            -dsco FORMAT=MBTILES \
+            -dsco NAME=alan-snow-vector-7.3.8 \
+            -dsco DESCRIPTION='Alan Map crisp vector snow polygons and snow-only 200 m DEM contours' \
+            -dsco TYPE=overlay \
+            -dsco MINZOOM=7 \
+            -dsco MAXZOOM=13 \
+            -dsco EXTENT=4096 \
+            -dsco BUFFER=96 \
+            -dsco SIMPLIFICATION=0.65 \
+            -dsco SIMPLIFICATION_MAX_ZOOM=0.12 \
+            -dsco MAX_SIZE=800000 \
+            -dsco MAX_FEATURES=200000
+          pmtiles convert build/alan-snow-vector-7.3.8.mbtiles build/alan-snow-vector-7.3.8.pmtiles
+          pmtiles verify build/alan-snow-vector-7.3.8.pmtiles
+          ls -lh build/alan-snow-vector-7.3.8.*
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('build/alan-snow-vector-7.3.8.pmtiles')
+          assert path.stat().st_size > 10_000, path.stat().st_size
+          assert path.stat().st_size < 100_000_000, path.stat().st_size
+          PY
+
+      - name: Integrate 7.3.8 runtime and remove legacy snow archives
+        run: |
+          set -euxo pipefail
+          python tools/release_7_3_8.py finalize \
+            --archive build/alan-snow-vector-7.3.8.pmtiles \
+            --report build/snow-vector-report-7.3.8.json
+          python tools/release_7_3_8.py validate
+
+      - name: Align browser smoke contract with 7.3.8 vector snow
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/map-smoke.mjs')
+          text = path.read_text(encoding='utf-8')
+
+          def replace_once(old, new, label):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "  await page.waitForFunction(()=>Boolean(window.ALAN_MAP_GRANITE_FRAME?.ready?.()),undefined,{timeout:30000});\n",
+              "  await page.waitForFunction(()=>Boolean(window.ALAN_MAP_GRANITE_FRAME?.ready?.()),undefined,{timeout:30000});\n"
+              "  await page.waitForFunction(()=>Boolean(window.ALAN_MAP_INSTANCE?.map?.getLayer?.('vector-snow-fill')),undefined,{timeout:60000});\n"
+              "  await page.waitForFunction(()=>window.ALAN_MAP_INSTANCE?.map?.isSourceLoaded?.('snow') === true,undefined,{timeout:60000,polling:250});\n",
+              'snow readiness wait'
+          )
+          replace_once("  assert.equal(bootstrapDiagnostics.version,'7.3.7');", "  assert.equal(bootstrapDiagnostics.version,'7.3.8');", 'bootstrap version')
+          replace_once(
+              "        satelliteSnow:byId['satellite-snow'] || null\n",
+              "        vectorSnow:byId['vector-snow-fill'] || null,\n        snowContours:byId['snow-relief-contours'] || null\n",
+              'snow layer diagnostics'
+          )
+          replace_once(
+              "  if (diagnostics.sourceIds.includes('snow')) {\n    assert.ok(diagnostics.layers.satelliteSnow);\n    assert.equal(diagnostics.layers.glacierFill,null);\n    assert.equal(diagnostics.layers.snowFill,null);\n  } else {\n    assert.ok(diagnostics.layers.glacierFill);\n    assert.ok(diagnostics.layers.snowFill);\n  }\n",
+              "  assert.ok(diagnostics.sourceIds.includes('snow'));\n  assert.ok(diagnostics.layers.vectorSnow);\n  assert.ok(diagnostics.layers.snowContours);\n  assert.equal(diagnostics.layers.vectorSnow.type,'fill');\n  assert.equal(diagnostics.layers.vectorSnow.minzoom,7);\n  assert.equal(diagnostics.layers.snowContours.type,'line');\n  assert.equal(diagnostics.layers.snowContours.minzoom,9.5);\n  assert.equal(diagnostics.layers.glacierFill,null);\n  assert.equal(diagnostics.layers.snowFill,null);\n",
+              'snow layer assertions'
+          )
+          replace_once(
+              "  if (diagnostics.sourceIds.includes('snow')) {\n    assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-snow-7.3.1.pmtiles'));\n  }\n",
+              "  assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-snow-vector-7.3.8.pmtiles'));\n",
+              'snow transport archive'
+          )
+          replace_once(
+              "  await page.evaluate(() => window.ALAN_MAP_INSTANCE.map.jumpTo({center:[42.445874,43.349602],zoom:11.2,bearing:180,pitch:58}));\n",
+              "  await page.evaluate(() => window.ALAN_MAP_INSTANCE.map.jumpTo({center:[42.445874,43.349602],zoom:10.2,bearing:180,pitch:50}));\n"
+              "  await page.waitForFunction(() => {\n"
+              "    const map=window.ALAN_MAP_INSTANCE?.map;\n"
+              "    return map?.isSourceLoaded?.('snow') === true && map.querySourceFeatures?.('snow',{sourceLayer:'snow'}).length > 0;\n"
+              "  },undefined,{timeout:60000,polling:250});\n"
+              "  await page.waitForTimeout(700);\n"
+              "  const snowProbe=await page.evaluate(() => {\n"
+              "    const map=window.ALAN_MAP_INSTANCE.map;\n"
+              "    return {\n"
+              "      sourceFeatures:map.querySourceFeatures('snow',{sourceLayer:'snow'}).length,\n"
+              "      renderedFeatures:map.queryRenderedFeatures(undefined,{layers:['vector-snow-fill']}).length,\n"
+              "      fillMinzoom:map.getLayer('vector-snow-fill')?.minzoom,\n"
+              "      contourMinzoom:map.getLayer('snow-relief-contours')?.minzoom\n"
+              "    };\n"
+              "  });\n"
+              "  assert.ok(snowProbe.sourceFeatures > 0);\n"
+              "  assert.ok(snowProbe.renderedFeatures > 0);\n"
+              "  assert.equal(snowProbe.fillMinzoom,7);\n"
+              "  assert.equal(snowProbe.contourMinzoom,9.5);\n\n"
+              "  await page.evaluate(() => window.ALAN_MAP_INSTANCE.map.jumpTo({center:[42.445874,43.349602],zoom:11.2,bearing:180,pitch:58}));\n",
+              'rendered snow probe'
+          )
+          replace_once("  assert.equal(performanceMetrics.version,'7.3.7');", "  assert.equal(performanceMetrics.version,'7.3.8');", 'performance version')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          node --check tests/map-smoke.mjs
+
+      - name: Validate snow and current map contracts
+        run: |
+          set -euxo pipefail
+          node --check assets/bootstrap.js
+          node --check assets/map-page.js
+          node --check assets/map-ui.js
+          node --check tests/runtime-contract.mjs
+          node --check tests/snow-vector-7.3.8.mjs
+          node tests/snow-vector-7.3.8.mjs
+          node tests/runtime-contract.mjs
+          node tests/presentation-world-space.mjs
+
+      - name: Browser rendering smoke test including visible snow
+        run: |
+          set -euxo pipefail
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node tests/map-smoke.mjs
+
+      - name: Collapse 7.3.8 to one validated commit above exact 7.3.7
+        run: |
+          set -euxo pipefail
+          cat > data/release-run-7.3.8.json <<EOF
+          {"version":"7.3.8","status":"validated","runId":${{ github.run_id }},"runAttempt":${{ github.run_attempt }},"sourceSha":"${{ github.sha }}"}
+          EOF
+          git config user.name 'Alan Map Builder'
+          git config user.email 'actions@users.noreply.github.com'
+          BASE_SHA='8f306e217748085613c0b7331833af5bd0f3aac3'
+          git cat-file -e "$BASE_SHA^{commit}"
+          rm -rf node_modules package-lock.json build
+          git reset --soft "$BASE_SHA"
+          git add -A
+          git commit -m 'Alan Map 7.3.8: crisp vector snow relief [skip ci]'
+          git push --force origin HEAD:7.3.8
+
+      - name: Package complete 7.3.8 project and file sizes
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/alan-map-7-3-8
+          find . -type f \
+            -not -path './.git/*' -not -path './build/*' -not -path './node_modules/*' -not -path '*/__pycache__/*' \
+            -printf '%P\t%s\n' | sort > /tmp/alan-map-7-3-8/file-sizes-7.3.8.tsv
+          cp data/snow-vector-report-7.3.8.json /tmp/alan-map-7-3-8/snow-vector-report-7.3.8.json
+          zip -qr /tmp/alan-map-7-3-8/alan-map-7.3.8.zip . \
+            -x '.git/*' 'build/*' 'node_modules/*' '*/__pycache__/*'
+          unzip -tq /tmp/alan-map-7-3-8/alan-map-7.3.8.zip
+          ls -lh /tmp/alan-map-7-3-8/alan-map-7.3.8.zip
+          wc -l /tmp/alan-map-7-3-8/file-sizes-7.3.8.tsv
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alan-map-7.3.8-full
+          path: /tmp/alan-map-7-3-8/
+          retention-days: 30
