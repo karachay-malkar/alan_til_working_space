@@ -21,3 +21,11 @@
 PMTiles продолжает работать через HTTP Range, общий LRU cache, NetworkGate и retry. Ручная подкачка соседних DEM/vector tiles удалена: MapLibre запрашивает только реально необходимые tiles. Snow, regional label textures и point objects остаются deferred.
 
 Векторный архив остаётся `data/alan-vector-7.2.pmtiles`, снег — `data/alan-snow-7.3.1.pmtiles`.
+
+## 7.3.8 — crisp vector snow
+
+- Replaces the runtime raster snow overlay with vector PMTiles polygons derived from the existing Sentinel/WorldCover canonical snow mask.
+- Shows snow continuously from z7 through the full z14.3 camera range, overzooming z13 vector tiles above z13.
+- Removes linear raster resampling and blurred snow edges.
+- Keeps DEM hillshade visible through a translucent snow fill and adds snow-only 200 m elevation contours from z9.5 for readable mountain slopes.
+- Removes the three legacy snow PMTiles archives from the release package.

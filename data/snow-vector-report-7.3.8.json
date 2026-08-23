@@ -1,0 +1,19 @@
+{
+  "version": "7.3.8",
+  "strategy": "vector-polygons-from-canonical-sentinel-mask-with-snow-contours",
+  "source_mask_version": "7.3.1",
+  "source_mask_zoom": 12,
+  "alpha_threshold": 128,
+  "minimum_polygon_area_m2": 2500.0,
+  "minimum_hole_area_m2": 1800.0,
+  "simplify_m": 10.0,
+  "snow_feature_count": 264,
+  "snow_vertex_count": 131665,
+  "snow_binary_pixels": 7872981,
+  "snow_area_km2_mercator": 11499.707671140619,
+  "source_binary_area_km2_mercator": 11499.707671141092,
+  "contour_interval_m": 200,
+  "snow_contour_feature_count": 1408,
+  "dem_zoom_for_contours": 11,
+  "output_gpkg": "build/snow-vector-7.3.8.gpkg"
+}

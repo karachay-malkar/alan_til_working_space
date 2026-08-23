@@ -6,11 +6,12 @@
 })(typeof self !== 'undefined' ? self : this, function (root) {
   'use strict';
 
-  const VERSION = '7.3.7';
-  const DEFAULT_STORAGE_KEY = 'alan-map-stage7.3.7-view';
+  const VERSION = '7.3.8';
+  const DEFAULT_STORAGE_KEY = 'alan-map-stage7.3.8-view';
   const STATE_SCHEMA_VERSION = 1;
   const STATE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
   const LEGACY_STORAGE_KEYS = [
+    'alan-map-stage7.3.7-view',
     'alan-map-stage7.3.6-view',
     'alan-map-stage7.3.5-view',
     'alan-map-stage7.3.4-view',
@@ -824,21 +825,40 @@
         }
         const snowTemplate = `pmtiles://${new URL(data.regionalSnow.archivePath, document.baseURI).href}`;
         map.addSource('snow',{
-          type:'raster',
+          type:'vector',
           url:snowTemplate,
-          tileSize:Number(data.regionalSnow.tileSize || 256),
           minzoom:Number(data.regionalSnow.minzoom),
           maxzoom:Number(data.regionalSnow.maxzoom),
           bounds:data.regionalSnow.bounds,
           attribution:data.regionalSnow.attribution
         });
+        const snowBeforeId = map.getLayer('ridge-lines') ? 'ridge-lines' : undefined;
         map.addLayer({
-          id:'satellite-snow',
-          type:'raster',
+          id:'vector-snow-fill',
+          type:'fill',
           source:'snow',
+          'source-layer':String(data.regionalSnow.sourceLayer || 'snow'),
           minzoom:Number(data.regionalSnow.minzoom),
-          paint:{'raster-opacity':0.92,'raster-fade-duration':0,'raster-resampling':'linear'}
-        },map.getLayer('ridge-lines') ? 'ridge-lines' : undefined);
+          paint:{
+            'fill-color':'#f8f7f1',
+            'fill-opacity':['interpolate',['linear'],['zoom'],7,0.68,10,0.72,12,0.76,14.3,0.78],
+            'fill-outline-color':'rgba(202,216,217,0.72)',
+            'fill-antialias':true
+          }
+        },snowBeforeId);
+        map.addLayer({
+          id:'snow-relief-contours',
+          type:'line',
+          source:'snow',
+          'source-layer':String(data.regionalSnow.contourSourceLayer || 'snow_contour'),
+          minzoom:Number(data.regionalSnow.contourMinzoom || 9.5),
+          layout:{'line-cap':'round','line-join':'round'},
+          paint:{
+            'line-color':'rgba(83,102,108,0.34)',
+            'line-width':['interpolate',['linear'],['zoom'],9.5,0.28,12,0.48,14.3,0.66],
+            'line-opacity':['interpolate',['linear'],['zoom'],9.5,0.20,11,0.30,14.3,0.38]
+          }
+        },snowBeforeId);
         snowSourceInstalled = true;
         return true;
       }).catch((error) => {

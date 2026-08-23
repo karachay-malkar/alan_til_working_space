@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '7.3.7';
+  const VERSION = '7.3.8';
   const RANGE_CACHE_BYTES = (() => {
     const memory = Number(navigator.deviceMemory || 0);
     if (memory > 0 && memory <= 2) return 12 * 1024 * 1024;

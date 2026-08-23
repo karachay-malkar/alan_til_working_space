@@ -26,9 +26,11 @@ try {
   await page.waitForFunction(()=>Boolean(window.ALAN_MAP_PRESENTATION_723?.nativeLayersReady?.()),undefined,{timeout:30000});
   await page.waitForFunction(()=>Boolean(window.ALAN_MAP_INSTANCE?.map?.isSourceLoaded?.('openmaptiles')),undefined,{timeout:30000});
   await page.waitForFunction(()=>Boolean(window.ALAN_MAP_GRANITE_FRAME?.ready?.()),undefined,{timeout:30000});
+  await page.waitForFunction(()=>Boolean(window.ALAN_MAP_INSTANCE?.map?.getLayer?.('vector-snow-fill')),undefined,{timeout:60000});
+  await page.waitForFunction(()=>window.ALAN_MAP_INSTANCE?.map?.isSourceLoaded?.('snow') === true,undefined,{timeout:60000,polling:250});
   assert.equal(await page.locator('[data-fantasy-toggle], .fantasy-toggle').count(),0);
   const bootstrapDiagnostics=await page.evaluate(() => window.ALAN_MAP_BOOTSTRAP_DIAGNOSTICS?.());
-  assert.equal(bootstrapDiagnostics.version,'7.3.7');
+  assert.equal(bootstrapDiagnostics.version,'7.3.8');
   assert.equal(bootstrapDiagnostics.strategy,'parallel-fetch-ordered-execution');
   assert.equal(bootstrapDiagnostics.runtimeEval,false);
 
@@ -53,7 +55,8 @@ try {
         waterFill:byId['osm-water-fill'] || null,
         glacierFill:byId['osm-glacier-fill'] || null,
         snowFill:byId['osm-snow-fill'] || null,
-        satelliteSnow:byId['satellite-snow'] || null
+        vectorSnow:byId['vector-snow-fill'] || null,
+        snowContours:byId['snow-relief-contours'] || null
       },
       presentation:{
         version:window.ALAN_MAP_PRESENTATION_723?.version,
@@ -83,14 +86,15 @@ try {
   assert.ok(diagnostics.sourceIds.includes('terrain-dem'));
   assert.ok(diagnostics.sourceIds.includes('openmaptiles'));
   for (const layer of [diagnostics.layers.roadMain,diagnostics.layers.riverLine,diagnostics.layers.waterFill,diagnostics.layers.forestPattern]) assert.ok(layer);
-  if (diagnostics.sourceIds.includes('snow')) {
-    assert.ok(diagnostics.layers.satelliteSnow);
-    assert.equal(diagnostics.layers.glacierFill,null);
-    assert.equal(diagnostics.layers.snowFill,null);
-  } else {
-    assert.ok(diagnostics.layers.glacierFill);
-    assert.ok(diagnostics.layers.snowFill);
-  }
+  assert.ok(diagnostics.sourceIds.includes('snow'));
+  assert.ok(diagnostics.layers.vectorSnow);
+  assert.ok(diagnostics.layers.snowContours);
+  assert.equal(diagnostics.layers.vectorSnow.type,'fill');
+  assert.equal(diagnostics.layers.vectorSnow.minzoom,7);
+  assert.equal(diagnostics.layers.snowContours.type,'line');
+  assert.equal(diagnostics.layers.snowContours.minzoom,9.5);
+  assert.equal(diagnostics.layers.glacierFill,null);
+  assert.equal(diagnostics.layers.snowFill,null);
   assert.equal(diagnostics.layers.currentSettlement.minzoom,10);
   assert.equal(diagnostics.layers.historicSettlement.minzoom,12);
   assert.equal(diagnostics.layers.historicObject.minzoom,12);
@@ -134,9 +138,7 @@ try {
   assert.ok(diagnostics.transport.archives.every(item => Number.isInteger(item.retries) && Number.isInteger(item.failures)));
   assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-dem-7.3.7.pmtiles'));
   assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-vector-7.2.pmtiles'));
-  if (diagnostics.sourceIds.includes('snow')) {
-    assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-snow-7.3.1.pmtiles'));
-  }
+  assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-snow-vector-7.3.8.pmtiles'));
   assert.ok(diagnostics.transport.archives.reduce((sum,item) => sum + item.networkBytes,0) > 0);
 
   await page.waitForFunction(() => Boolean(window.ALAN_MAP_INSTANCE?.getLabelDiagnostics?.().regional), undefined, {timeout:120000});
@@ -162,6 +164,26 @@ try {
   assert.equal(deferredPointDiagnostics.diagnostics.deferredPointsReady,true);
   assert.equal(deferredPointDiagnostics.pointCount,779);
   await page.evaluate(() => window.ALAN_MAP_INSTANCE.map.jumpTo({zoom:7}));
+
+  await page.evaluate(() => window.ALAN_MAP_INSTANCE.map.jumpTo({center:[42.445874,43.349602],zoom:10.2,bearing:180,pitch:50}));
+  await page.waitForFunction(() => {
+    const map=window.ALAN_MAP_INSTANCE?.map;
+    return map?.isSourceLoaded?.('snow') === true && map.querySourceFeatures?.('snow',{sourceLayer:'snow'}).length > 0;
+  },undefined,{timeout:60000,polling:250});
+  await page.waitForTimeout(700);
+  const snowProbe=await page.evaluate(() => {
+    const map=window.ALAN_MAP_INSTANCE.map;
+    return {
+      sourceFeatures:map.querySourceFeatures('snow',{sourceLayer:'snow'}).length,
+      renderedFeatures:map.queryRenderedFeatures(undefined,{layers:['vector-snow-fill']}).length,
+      fillMinzoom:map.getLayer('vector-snow-fill')?.minzoom,
+      contourMinzoom:map.getLayer('snow-relief-contours')?.minzoom
+    };
+  });
+  assert.ok(snowProbe.sourceFeatures > 0);
+  assert.ok(snowProbe.renderedFeatures > 0);
+  assert.equal(snowProbe.fillMinzoom,7);
+  assert.equal(snowProbe.contourMinzoom,9.5);
 
   await page.evaluate(() => window.ALAN_MAP_INSTANCE.map.jumpTo({center:[42.445874,43.349602],zoom:11.2,bearing:180,pitch:58}));
   await page.waitForFunction(() => {
@@ -246,7 +268,7 @@ try {
     return metrics && metrics.totalNetworkRequests > 0 && metrics.renderFrames > 0;
   },undefined,{timeout:30000});
   const performanceMetrics = await page.evaluate(() => window.ALAN_MAP_PERFORMANCE_DIAGNOSTICS());
-  assert.equal(performanceMetrics.version,'7.3.7');
+  assert.equal(performanceMetrics.version,'7.3.8');
   assert.ok(performanceMetrics.totalNetworkBytes > 0);
   assert.ok(performanceMetrics.totalNetworkRequests > 0);
   assert.ok(performanceMetrics.renderFrames > 0);
