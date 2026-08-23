@@ -203,6 +203,26 @@ jobs:
           find data -maxdepth 1 -type f -name '*.pmtiles' ! -name 'alan-dem-7.3.6.pmtiles' ! -name 'alan-dem-7.3.7.pmtiles' -print0 | sort -z | xargs -0 sha256sum > build/non-dem-pmtiles-after.sha256
           diff -u build/non-dem-pmtiles-before.sha256 build/non-dem-pmtiles-after.sha256
 
+      - name: Harden terrain elevation readiness probe
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('tests/map-smoke.mjs')
+          text=path.read_text(encoding='utf-8')
+          old="  await page.waitForFunction(() => window.ALAN_MAP_INSTANCE?.map?.isSourceLoaded?.('terrain-dem') === true,undefined,{timeout:60000});\n"
+          new="""  await page.waitForFunction(() => {\n    const map=window.ALAN_MAP_INSTANCE?.map;\n    if (!map?.queryTerrainElevation) return false;\n    const element=map.getContainer();\n    let finite=0;\n    for (const fx of [.35,.5,.65]) for (const fy of [.35,.5,.65]) {\n      const lngLat=map.unproject([element.clientWidth*fx,element.clientHeight*fy]);\n      if (Number.isFinite(map.queryTerrainElevation(lngLat))) finite += 1;\n    }\n    return finite >= 5;\n  },undefined,{timeout:60000,polling:250});\n"""
+          if old not in text:
+              raise SystemExit('terrain source-loaded wait marker missing')
+          text=text.replace(old,new,1)
+          old_probe="  const terrainProbe=await page.evaluate(()=>{const map=window.ALAN_MAP_INSTANCE.map;const samples=[];const c=[42.445874,43.349602];for(const dx of [-.055,-.0275,0,.0275,.055])for(const dy of [-.045,-.0225,0,.0225,.045]){const e=map.queryTerrainElevation?.([c[0]+dx,c[1]+dy]);if(Number.isFinite(e))samples.push(e);}return{terrain:map.getTerrain?.(),pitch:map.getPitch(),zoom:map.getZoom(),finiteSamples:samples.length,reliefRange:samples.length?Math.max(...samples)-Math.min(...samples):null};});\n"
+          new_probe="  const terrainProbe=await page.evaluate(()=>{const map=window.ALAN_MAP_INSTANCE.map;const element=map.getContainer();const samples=[];for(const fx of [.25,.375,.5,.625,.75])for(const fy of [.30,.40,.50,.60,.70]){const lngLat=map.unproject([element.clientWidth*fx,element.clientHeight*fy]);const e=map.queryTerrainElevation?.(lngLat);if(Number.isFinite(e))samples.push(e);}return{terrain:map.getTerrain?.(),pitch:map.getPitch(),zoom:map.getZoom(),finiteSamples:samples.length,reliefRange:samples.length?Math.max(...samples)-Math.min(...samples):null};});\n"
+          if old_probe not in text:
+              raise SystemExit('terrain geographic probe marker missing')
+          path.write_text(text.replace(old_probe,new_probe,1),encoding='utf-8')
+          PY
+          node --check tests/map-smoke.mjs
+
       - name: Browser smoke test
         run: |
           set -euxo pipefail
