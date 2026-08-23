@@ -1,0 +1,298 @@
+{
+  "version": "7.3.7",
+  "archive": "data/alan-dem-7.3.7.pmtiles",
+  "bytes": 12466762,
+  "sha256": "0e346cf492800cda9d66248113fbc8dc7415e8979c1e9a18f35f142c77c074da",
+  "tileSize": 256,
+  "heightQuantizationM": 5,
+  "physicalNativeZooms": [
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "highestNativeZoom": 11,
+  "overzoomFrom": 11,
+  "lodModel": "single-pyramid-native-z7-z11-overzoom-z11",
+  "numericLineage": "sequential-z11-z10-z9-z8-z7-area-average-5m",
+  "physicalGroundMPerPixelAtCenter": {
+    "7": 885.148,
+    "8": 442.574,
+    "9": 221.287,
+    "10": 110.644,
+    "11": 55.322
+  },
+  "effectiveGroundMPerInformationPixelAtCenter": {
+    "7": 885.148,
+    "8": 442.574,
+    "9": 221.287,
+    "10": 110.644,
+    "11": 55.322
+  },
+  "build": {
+    "version": "7.3.7",
+    "tile_size": 256,
+    "minzoom": 7,
+    "maxzoom": 11,
+    "highest_native_zoom": 11,
+    "overzoom_from": 11,
+    "height_quantization_m": 5.0,
+    "encoding": "mapbox",
+    "lod_model": "single-pyramid-native-z7-z11-overzoom-z11",
+    "physical_native_zooms": [
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "numeric_lineage": "sequential-z11-z10-z9-z8-z7-area-average-5m",
+    "numeric_level_lineage": {
+      "11": "source-dem-to-web-mercator-bilinear-then-5m-quantization",
+      "10": "area-average-downsample-of-z11-then-5m-quantization",
+      "9": "area-average-downsample-of-z10-then-5m-quantization",
+      "8": "area-average-downsample-of-z9-then-5m-quantization",
+      "7": "area-average-downsample-of-z8-then-5m-quantization"
+    },
+    "physical_ground_m_per_pixel_at_center": {
+      "7": 885.148,
+      "8": 442.574,
+      "9": 221.287,
+      "10": 110.644,
+      "11": 55.322
+    },
+    "effective_ground_m_per_information_pixel_at_center": {
+      "7": 885.148,
+      "8": 442.574,
+      "9": 221.287,
+      "10": 110.644,
+      "11": 55.322
+    },
+    "numeric_level_sha256": {
+      "7": "48bdbf1964b0e127fa387b4e49ba3cdc8dae2d8c1b93cfb426cabc57b4bff62b",
+      "8": "f7cb83a31221bbb101ae6e582081b14c38384f50f81f3ad8a73c033e77e34388",
+      "9": "1577cf6fb510ad65bb22c21c7f44d18ba10d19dad2592c71b05d0ab601e826d0",
+      "10": "7a1afae6b39fc2c7c5e461e485a4792c092377f584260023215ac6053f6d4a9a",
+      "11": "ea30617dcfcd88bc645bf26a525df18935fcbca29bef6d97e015e40fb721af90"
+    },
+    "extent_3857": [
+      4383204.95,
+      5009377.086,
+      5009377.086,
+      5635549.221
+    ],
+    "z7_tile_rect": {
+      "x_min": 78,
+      "x_max": 79,
+      "y_min": 46,
+      "y_max": 47
+    },
+    "per_zoom": {
+      "7": {
+        "tiles_written": 4,
+        "outside_tiles_skipped": 0,
+        "partial_tiles_masked": 4,
+        "rgb_tiles": 0,
+        "rgba_tiles": 4,
+        "png_bytes": 82018
+      },
+      "8": {
+        "tiles_written": 9,
+        "outside_tiles_skipped": 7,
+        "partial_tiles_masked": 9,
+        "rgb_tiles": 0,
+        "rgba_tiles": 9,
+        "png_bytes": 264669
+      },
+      "9": {
+        "tiles_written": 20,
+        "outside_tiles_skipped": 44,
+        "partial_tiles_masked": 16,
+        "rgb_tiles": 4,
+        "rgba_tiles": 16,
+        "png_bytes": 851067
+      },
+      "10": {
+        "tiles_written": 62,
+        "outside_tiles_skipped": 194,
+        "partial_tiles_masked": 34,
+        "rgb_tiles": 28,
+        "rgba_tiles": 34,
+        "png_bytes": 2608460
+      },
+      "11": {
+        "tiles_written": 212,
+        "outside_tiles_skipped": 812,
+        "partial_tiles_masked": 70,
+        "rgb_tiles": 142,
+        "rgba_tiles": 70,
+        "png_bytes": 7668992
+      }
+    },
+    "candidate_tiles": 1364,
+    "tiles_written": 307,
+    "outside_tiles_skipped": 1057,
+    "partial_tiles_masked": 133,
+    "interior_tiles": 174,
+    "rgb_tiles": 174,
+    "rgba_tiles": 133,
+    "transparent_pixels": 4849801,
+    "valid_pixels": 15269751,
+    "encoded_png_bytes": 11475206
+  },
+  "validation": {
+    "valid": true,
+    "native_zooms": [
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "tile_size": 256,
+    "tile_counts": {
+      "7": 4,
+      "8": 9,
+      "9": 20,
+      "10": 62,
+      "11": 212
+    },
+    "png_modes": {
+      "7": [
+        "RGBA"
+      ],
+      "8": [
+        "RGBA"
+      ],
+      "9": [
+        "RGB",
+        "RGBA"
+      ],
+      "10": [
+        "RGB",
+        "RGBA"
+      ],
+      "11": [
+        "RGB",
+        "RGBA"
+      ]
+    },
+    "lod_model": "single-pyramid-native-z7-z11-overzoom-z11",
+    "numeric_lineage": "sequential-z11-z10-z9-z8-z7-area-average-5m",
+    "height_quantization_m": 5,
+    "no_native_tiles_after_z11": true
+  },
+  "edgeCollar": {
+    "version": "7.2.3-r1",
+    "mode": "hidden-tapered-dem-edge-collar",
+    "collar_m": 4500,
+    "inner_taper_m": 900,
+    "outer_skirt_m": 3200,
+    "safe_max_elevation_m": 1000,
+    "cap_softness_m": 120,
+    "technical_base_m": -10000,
+    "relief_exaggeration": 2.8,
+    "rendered_safe_max_m": 2800,
+    "frame_top_m": 4000,
+    "frame_clearance_m": 1200,
+    "fill_method": "smooth-height-cap-plus-hidden-outer-descent",
+    "alpha_inside_collar": 255,
+    "terrain_base_drop_removed_near_map_frame": true,
+    "terrain_above_frame_prevented": true,
+    "visible_dem_inside_frame_preserved": true,
+    "terrain_changes_limited_to_hidden_frame_band": true,
+    "pmtiles_bytes_before": 11476586,
+    "pmtiles_bytes_after": 12466762,
+    "total_tiles_before": 307,
+    "total_tiles_after": 329,
+    "changed_tiles": 139,
+    "new_tiles": 22,
+    "collar_pixels": 1607851,
+    "inside_taper_pixels": 328997,
+    "inside_capped_pixels": 148271,
+    "outer_descent_pixels": 454615,
+    "per_zoom": [
+      {
+        "zoom": 7,
+        "boundary_tiles": 4,
+        "candidate_tiles": 16,
+        "changed_tiles": 4,
+        "new_tiles": 0,
+        "collar_pixels": 5303,
+        "inside_taper_pixels": 1720,
+        "inside_capped_pixels": 785,
+        "outer_descent_pixels": 1269,
+        "collar_px": 6,
+        "inner_taper_px": 2,
+        "ground_m_per_pixel": 885.148,
+        "minimum_written_height_m": -9904.1,
+        "maximum_written_height_m": 1000.0
+      },
+      {
+        "zoom": 8,
+        "boundary_tiles": 9,
+        "candidate_tiles": 27,
+        "changed_tiles": 9,
+        "new_tiles": 1,
+        "collar_pixels": 19712,
+        "inside_taper_pixels": 5171,
+        "inside_capped_pixels": 2338,
+        "outer_descent_pixels": 5143,
+        "collar_px": 11,
+        "inner_taper_px": 3,
+        "ground_m_per_pixel": 442.574,
+        "minimum_written_height_m": -9904.0,
+        "maximum_written_height_m": 1000.0
+      },
+      {
+        "zoom": 9,
+        "boundary_tiles": 16,
+        "candidate_tiles": 44,
+        "changed_tiles": 17,
+        "new_tiles": 1,
+        "collar_pixels": 76750,
+        "inside_taper_pixels": 17254,
+        "inside_capped_pixels": 7793,
+        "outer_descent_pixels": 20987,
+        "collar_px": 21,
+        "inner_taper_px": 5,
+        "ground_m_per_pixel": 221.287,
+        "minimum_written_height_m": -9904.0,
+        "maximum_written_height_m": 1000.0
+      },
+      {
+        "zoom": 10,
+        "boundary_tiles": 34,
+        "candidate_tiles": 99,
+        "changed_tiles": 35,
+        "new_tiles": 4,
+        "collar_pixels": 300938,
+        "inside_taper_pixels": 63299,
+        "inside_capped_pixels": 28549,
+        "outer_descent_pixels": 82802,
+        "collar_px": 41,
+        "inner_taper_px": 9,
+        "ground_m_per_pixel": 110.644,
+        "minimum_written_height_m": -9904.2,
+        "maximum_written_height_m": 1000.0
+      },
+      {
+        "zoom": 11,
+        "boundary_tiles": 70,
+        "candidate_tiles": 206,
+        "changed_tiles": 74,
+        "new_tiles": 16,
+        "collar_pixels": 1205148,
+        "inside_taper_pixels": 241553,
+        "inside_capped_pixels": 108806,
+        "outer_descent_pixels": 344414,
+        "collar_px": 82,
+        "inner_taper_px": 17,
+        "ground_m_per_pixel": 55.322,
+        "minimum_written_height_m": -9993.6,
+        "maximum_written_height_m": 1000.0
+      }
+    ]
+  }
+}

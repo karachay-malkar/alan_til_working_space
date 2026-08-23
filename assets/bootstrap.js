@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const RELEASE = '7.3.6';
+  const RELEASE = '7.3.7';
   const baseUrl = new URL('.', document.currentScript.src);
   const scripts = [
     'maplibre.js',

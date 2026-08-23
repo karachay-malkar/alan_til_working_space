@@ -6,11 +6,12 @@
 })(typeof self !== 'undefined' ? self : this, function (root) {
   'use strict';
 
-  const VERSION = '7.3.6';
-  const DEFAULT_STORAGE_KEY = 'alan-map-stage7.3.6-view';
+  const VERSION = '7.3.7';
+  const DEFAULT_STORAGE_KEY = 'alan-map-stage7.3.7-view';
   const STATE_SCHEMA_VERSION = 1;
   const STATE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
   const LEGACY_STORAGE_KEYS = [
+    'alan-map-stage7.3.6-view',
     'alan-map-stage7.3.5-view',
     'alan-map-stage7.3.4-view',
     'alan-map-stage7.3.2-view',

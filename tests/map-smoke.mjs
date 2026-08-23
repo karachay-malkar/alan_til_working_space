@@ -14,7 +14,7 @@ try {
   const errors=[];
   page.on('pageerror',e=>errors.push(String(e)));
 
-  const rangeProbe = await page.request.get('http://127.0.0.1:4173/data/alan-dem-7.3.6.pmtiles',{
+  const rangeProbe = await page.request.get('http://127.0.0.1:4173/data/alan-dem-7.3.7.pmtiles',{
     headers:{Range:'bytes=0-126'}
   });
   assert.equal(rangeProbe.status(),206);
@@ -28,7 +28,7 @@ try {
   await page.waitForFunction(()=>Boolean(window.ALAN_MAP_GRANITE_FRAME?.ready?.()),undefined,{timeout:30000});
   assert.equal(await page.locator('[data-fantasy-toggle], .fantasy-toggle').count(),0);
   const bootstrapDiagnostics=await page.evaluate(() => window.ALAN_MAP_BOOTSTRAP_DIAGNOSTICS?.());
-  assert.equal(bootstrapDiagnostics.version,'7.3.6');
+  assert.equal(bootstrapDiagnostics.version,'7.3.7');
   assert.equal(bootstrapDiagnostics.strategy,'parallel-fetch-ordered-execution');
   assert.equal(bootstrapDiagnostics.runtimeEval,false);
 
@@ -132,7 +132,7 @@ try {
   assert.equal(vectorTransport.fullFileFallbackAllowed,true);
   assert.ok(vectorTransport.concurrency.limit >= 3);
   assert.ok(diagnostics.transport.archives.every(item => Number.isInteger(item.retries) && Number.isInteger(item.failures)));
-  assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-dem-7.3.6.pmtiles'));
+  assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-dem-7.3.7.pmtiles'));
   assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-vector-7.2.pmtiles'));
   if (diagnostics.sourceIds.includes('snow')) {
     assert.ok(diagnostics.transport.archives.some(item => item.archivePath === 'data/alan-snow-7.3.1.pmtiles'));
@@ -162,6 +162,26 @@ try {
   assert.equal(deferredPointDiagnostics.diagnostics.deferredPointsReady,true);
   assert.equal(deferredPointDiagnostics.pointCount,779);
   await page.evaluate(() => window.ALAN_MAP_INSTANCE.map.jumpTo({zoom:7}));
+
+  await page.evaluate(() => window.ALAN_MAP_INSTANCE.map.jumpTo({center:[42.445874,43.349602],zoom:11.2,bearing:180,pitch:58}));
+  await page.waitForFunction(() => {
+    const map=window.ALAN_MAP_INSTANCE?.map;
+    if (!map?.queryTerrainElevation) return false;
+    const element=map.getContainer();
+    let finite=0;
+    for (const fx of [.35,.5,.65]) for (const fy of [.35,.5,.65]) {
+      const lngLat=map.unproject([element.clientWidth*fx,element.clientHeight*fy]);
+      if (Number.isFinite(map.queryTerrainElevation(lngLat))) finite += 1;
+    }
+    return finite >= 5;
+  },undefined,{timeout:60000,polling:250});
+  await page.waitForTimeout(900);
+  const terrainProbe=await page.evaluate(()=>{const map=window.ALAN_MAP_INSTANCE.map;const element=map.getContainer();const samples=[];for(const fx of [.25,.375,.5,.625,.75])for(const fy of [.30,.40,.50,.60,.70]){const lngLat=map.unproject([element.clientWidth*fx,element.clientHeight*fy]);const e=map.queryTerrainElevation?.(lngLat);if(Number.isFinite(e))samples.push(e);}return{terrain:map.getTerrain?.(),pitch:map.getPitch(),zoom:map.getZoom(),finiteSamples:samples.length,reliefRange:samples.length?Math.max(...samples)-Math.min(...samples):null};});
+  assert.equal(terrainProbe.terrain?.source,'terrain-dem');
+  assert.ok(terrainProbe.pitch>=45);
+  assert.ok(terrainProbe.zoom>=11);
+  assert.ok(terrainProbe.finiteSamples>=9);
+  assert.ok(terrainProbe.reliefRange>350);
 
   const presentation = await page.evaluate(() => window.ALAN_MAP_INSTANCE.getPresentationDiagnostics());
   assert.equal(presentation.regionalLabelAltitudeM,10000);
@@ -226,7 +246,7 @@ try {
     return metrics && metrics.totalNetworkRequests > 0 && metrics.renderFrames > 0;
   },undefined,{timeout:30000});
   const performanceMetrics = await page.evaluate(() => window.ALAN_MAP_PERFORMANCE_DIAGNOSTICS());
-  assert.equal(performanceMetrics.version,'7.3.6');
+  assert.equal(performanceMetrics.version,'7.3.7');
   assert.ok(performanceMetrics.totalNetworkBytes > 0);
   assert.ok(performanceMetrics.totalNetworkRequests > 0);
   assert.ok(performanceMetrics.renderFrames > 0);
